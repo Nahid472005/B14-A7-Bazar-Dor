@@ -59,7 +59,10 @@ function SignUpForm() {
         toast.error(msg);
       } else {
         toast.success("অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! অনুগ্রহ করে সাইন ইন করুন");
-        router.push(`/signin${redirectUrl !== "/" ? `?redirect=${redirectUrl}` : ""}`);
+        const nextTarget = `/signin?email=${encodeURIComponent(email.trim())}${
+          redirectUrl !== "/" ? `&redirect=${encodeURIComponent(redirectUrl)}` : ""
+        }`;
+        router.push(nextTarget);
       }
     } catch (err: any) {
       const msg = err?.message || "রেজিস্ট্রেশনে ত্রুটি হয়েছে";
