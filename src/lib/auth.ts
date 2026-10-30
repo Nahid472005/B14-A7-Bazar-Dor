@@ -48,16 +48,20 @@ export async function seedDemoUser() {
   if (isSeeded) return;
   isSeeded = true;
   try {
-    const existing = db.user.find((u) => u.email === "rezwanahmed@gmail.com");
+    let existing = db.user.find((u) => u.email === "rezwanahmed@gmail.com");
     if (!existing) {
-      await auth.api.signUpEmail({
+      const res = await auth.api.signUpEmail({
         body: {
           name: "Rezwan Ahmed",
           email: "rezwanahmed@gmail.com",
           password: "password123",
         },
       });
+      existing = res.user;
       console.log("Seeded demo account: rezwanahmed@gmail.com / password123");
+    }
+    if (existing) {
+      existing.image = "/avatar.png";
     }
   } catch (err) {
     // Already exists or initialized

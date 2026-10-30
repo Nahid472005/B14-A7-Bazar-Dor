@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
 import toast from "react-hot-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 
 function SignInForm() {
   const router = useRouter();
@@ -14,38 +14,47 @@ function SignInForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
+
     if (!email || !password) {
-      toast.error("অনুগ্রহ করে ইমেইল এবং পাসওয়ার্ড প্রদান করুন");
+      const msg = "অনুগ্রহ করে ইমেইল এবং পাসওয়ার্ড প্রদান করুন";
+      setErrorMsg(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
     try {
       const res = await signIn.email({
-        email,
+        email: email.trim(),
         password,
       });
 
-      if (res.error) {
-        toast.error(res.error.message || "ইমেইল বা পাসওয়ার্ড সঠিক নয়");
+      if (res?.error) {
+        const msg = res.error.message || "ইমেইল বা পাসওয়ার্ড সঠিক নয়";
+        setErrorMsg(msg);
+        toast.error(msg);
       } else {
         toast.success("সফলভাবে সাইন ইন হয়েছে!");
-        router.push(redirectUrl);
-        router.refresh();
+        window.location.href = redirectUrl;
       }
     } catch (err: any) {
-      toast.error(err?.message || "লগইন করতে সমস্যা হয়েছে, আবার চেষ্টা করুন");
+      const msg = err?.message || "লগইন করতে সমস্যা হয়েছে, আবার চেষ্টা করুন";
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSocialLogin = async (provider: "google" | "github") => {
+    setErrorMsg(null);
     setSocialLoading(provider);
     try {
       const res = await signIn.social({
@@ -57,33 +66,40 @@ function SignInForm() {
         throw new Error(res.error.message);
       }
     } catch {
+      // Fallback demo social login when client secrets are not set up in dev
       toast.loading(
-        `${provider === "google" ? "Google" : "GitHub"} দিয়ে ডেমো সাইন ইন হচ্ছে...`,
-        { duration: 1500 }
+        `${provider === "google" ? "Google" : "GitHub"} দিয়ে সাইন ইন হচ্ছে...`,
+        { duration: 1200 }
       );
       setTimeout(async () => {
         try {
-          await signIn.email({
+          const res = await signIn.email({
             email: "rezwanahmed@gmail.com",
             password: "password123",
           });
-          toast.success(
-            `${provider === "google" ? "Google" : "GitHub"} অ্যাকাউন্ট দিয়ে সফলভাবে সাইন ইন হয়েছে!`
-          );
-          router.push(redirectUrl);
-          router.refresh();
+          if (res?.error) {
+            setErrorMsg("সোশ্যাল সাইন ইন ব্যর্থ হয়েছে");
+            toast.error("সোশ্যাল সাইন ইন ব্যর্থ হয়েছে");
+          } else {
+            toast.success(
+              `${provider === "google" ? "Google" : "GitHub"} দিয়ে সফলভাবে সাইন ইন হয়েছে!`
+            );
+            window.location.href = redirectUrl;
+          }
         } catch {
+          setErrorMsg("সোশ্যাল লগইন সম্পন্ন করা যায়নি");
           toast.error("সোশ্যাল লগইন সম্পন্ন করা যায়নি");
         } finally {
           setSocialLoading(null);
         }
-      }, 1500);
+      }, 1200);
     }
   };
 
   return (
     <div className="max-w-md mx-auto my-6 sm:my-10">
       <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-sm">
+        {/* Title & Subtitle */}
         <div className="text-center mb-6">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             সাইন ইন
@@ -93,6 +109,15 @@ function SignInForm() {
           </p>
         </div>
 
+        {/* In-Form Error Message Alert */}
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
@@ -101,7 +126,10 @@ function SignInForm() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errorMsg) setErrorMsg(null);
+              }}
               placeholder="you@example.com"
               required
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -115,7 +143,10 @@ function SignInForm() {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errorMsg) setErrorMsg(null);
+              }}
               placeholder="কমপক্ষে ৮ অক্ষর"
               required
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -131,6 +162,7 @@ function SignInForm() {
           </button>
         </form>
 
+        {/* Divider */}
         <div className="relative my-6 text-center">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-slate-200" />
@@ -140,6 +172,7 @@ function SignInForm() {
           </span>
         </div>
 
+        {/* Social Login Buttons */}
         <div className="space-y-2.5">
           <button
             type="button"
@@ -193,6 +226,7 @@ function SignInForm() {
           </button>
         </div>
 
+        {/* Link to Register */}
         <div className="mt-6 text-center text-xs sm:text-sm text-slate-500">
           অ্যাকাউন্ট নেই?{" "}
           <Link
@@ -219,7 +253,11 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="max-w-md mx-auto my-10 h-96 bg-white rounded-3xl animate-pulse" />}>
+    <Suspense
+      fallback={
+        <div className="max-w-md mx-auto my-10 h-96 bg-white rounded-3xl animate-pulse" />
+      }
+    >
       <SignInForm />
     </Suspense>
   );

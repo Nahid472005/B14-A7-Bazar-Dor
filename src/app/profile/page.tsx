@@ -83,16 +83,15 @@ export default function ProfilePage() {
       {/* Top Card: User Info & Sign Out */}
       <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-100 border border-emerald-300 text-emerald-800 flex items-center justify-center font-bold text-2xl overflow-hidden shadow-inner flex-shrink-0">
-            {session.user.image ? (
-              <img
-                src={session.user.image}
-                alt={session.user.name || "User"}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <UserCircle className="w-10 h-10 text-emerald-700" />
-            )}
+          <div className="w-16 h-16 rounded-2xl bg-slate-200 border border-slate-300 text-slate-700 flex items-center justify-center font-bold text-2xl overflow-hidden shadow-inner flex-shrink-0">
+            <img
+              src={session.user.image || "/avatar.png"}
+              alt={session.user.name || "User"}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = "none";
+              }}
+            />
           </div>
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900">

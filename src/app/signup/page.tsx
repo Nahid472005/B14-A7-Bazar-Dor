@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signUp, signIn } from "@/lib/auth-client";
 import toast from "react-hot-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 
 function SignUpForm() {
   const router = useRouter();
@@ -16,49 +16,62 @@ function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
 
-    if (!name || !email || !password) {
-      toast.error("অনুগ্রহ করে সব তথ্য সঠিকভাবে পূরণ করুন");
+    if (!name.trim() || !email.trim() || !password) {
+      const msg = "অনুগ্রহ করে সব তথ্য সঠিকভাবে পূরণ করুন";
+      setErrorMsg(msg);
+      toast.error(msg);
       return;
     }
 
     if (password.length < 8) {
-      toast.error("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে");
+      const msg = "পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে";
+      setErrorMsg(msg);
+      toast.error(msg);
       return;
     }
 
     if (confirmPassword && password !== confirmPassword) {
-      toast.error("পাসওয়ার্ড ও পাসওয়ার্ড নিশ্চিতকরণ মিলছে না");
+      const msg = "পাসওয়ার্ড ও পাসওয়ার্ড নিশ্চিতকরণ মিলছে না";
+      setErrorMsg(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
     try {
       const res = await signUp.email({
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
         password,
       });
 
-      if (res.error) {
-        toast.error(res.error.message || "রেজিস্ট্রেশন সম্পন্ন করা সম্ভব হয়নি");
+      if (res?.error) {
+        const msg = res.error.message || "রেজিস্ট্রেশন সম্পন্ন করা সম্ভব হয়নি";
+        setErrorMsg(msg);
+        toast.error(msg);
       } else {
         toast.success("অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে! অনুগ্রহ করে সাইন ইন করুন");
         router.push(`/signin${redirectUrl !== "/" ? `?redirect=${redirectUrl}` : ""}`);
       }
     } catch (err: any) {
-      toast.error(err?.message || "রেজিস্ট্রেশনে ত্রুটি হয়েছে");
+      const msg = err?.message || "রেজিস্ট্রেশনে ত্রুটি হয়েছে";
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSocialLogin = async (provider: "google" | "github") => {
+    setErrorMsg(null);
     setSocialLoading(provider);
     try {
       const res = await signIn.social({
@@ -70,32 +83,38 @@ function SignUpForm() {
       }
     } catch {
       toast.loading(
-        `${provider === "google" ? "Google" : "GitHub"} দিয়ে ডেমো সাইন ইন হচ্ছে...`,
-        { duration: 1500 }
+        `${provider === "google" ? "Google" : "GitHub"} দিয়ে সাইন ইন হচ্ছে...`,
+        { duration: 1200 }
       );
       setTimeout(async () => {
         try {
-          await signIn.email({
+          const res = await signIn.email({
             email: "rezwanahmed@gmail.com",
             password: "password123",
           });
-          toast.success(
-            `${provider === "google" ? "Google" : "GitHub"} অ্যাকাউন্ট দিয়ে সফলভাবে সাইন ইন হয়েছে!`
-          );
-          router.push(redirectUrl);
-          router.refresh();
+          if (res?.error) {
+            setErrorMsg("সোশ্যাল সাইন ইন ব্যর্থ হয়েছে");
+            toast.error("সোশ্যাল সাইন ইন ব্যর্থ হয়েছে");
+          } else {
+            toast.success(
+              `${provider === "google" ? "Google" : "GitHub"} দিয়ে সফলভাবে সাইন ইন হয়েছে!`
+            );
+            window.location.href = redirectUrl;
+          }
         } catch {
+          setErrorMsg("সোশ্যাল লগইন সম্পন্ন করা যায়নি");
           toast.error("সোশ্যাল লগইন সম্পন্ন করা যায়নি");
         } finally {
           setSocialLoading(null);
         }
-      }, 1500);
+      }, 1200);
     }
   };
 
   return (
     <div className="max-w-md mx-auto my-6 sm:my-10">
       <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-sm">
+        {/* Title & Subtitle */}
         <div className="text-center mb-6">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             অ্যাকাউন্ট তৈরি করুন
@@ -105,6 +124,14 @@ function SignUpForm() {
           </p>
         </div>
 
+        {/* In-Form Error Alert */}
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
@@ -113,7 +140,10 @@ function SignUpForm() {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errorMsg) setErrorMsg(null);
+              }}
               placeholder="যেমন: রহিম উদ্দিন"
               required
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -127,7 +157,10 @@ function SignUpForm() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errorMsg) setErrorMsg(null);
+              }}
               placeholder="you@example.com"
               required
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -141,7 +174,10 @@ function SignUpForm() {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errorMsg) setErrorMsg(null);
+              }}
               placeholder="কমপক্ষে ৮ অক্ষর"
               required
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -155,7 +191,10 @@ function SignUpForm() {
             <input
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (errorMsg) setErrorMsg(null);
+              }}
               placeholder="আবার লিখুন"
               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
@@ -262,7 +301,11 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense fallback={<div className="max-w-md mx-auto my-10 h-96 bg-white rounded-3xl animate-pulse" />}>
+    <Suspense
+      fallback={
+        <div className="max-w-md mx-auto my-10 h-96 bg-white rounded-3xl animate-pulse" />
+      }
+    >
       <SignUpForm />
     </Suspense>
   );
